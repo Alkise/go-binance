@@ -615,3 +615,8 @@ func (c *Client) NewOpenInterestStatisticsService() *OpenInterestStatisticsServi
 func (c *Client) NewLongShortRatioService() *LongShortRatioService {
 	return &LongShortRatioService{c: c}
 }
+
+// NewTradeFeeService init the trade fee service
+func (c *Client) NewTradeFeeService() *TradeFeeService {
+	return &TradeFeeService{c: c}
+}
