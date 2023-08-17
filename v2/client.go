@@ -1009,3 +1009,78 @@ func (c *Client) NewManagedSubAccountAssetsService() *ManagedSubAccountAssetsSer
 func (c *Client) NewSubAccountFuturesAccountService() *SubAccountFuturesAccountService {
 	return &SubAccountFuturesAccountService{c: c}
 }
+
+// NewCreateBrokerSubAccountService
+func (c *Client) NewCreateBrokerSubAccountService() *CreateBrokerSubAccountService {
+	return &CreateBrokerSubAccountService{c: c}
+}
+
+// NewCreateBrokerSubAccountApiKeyService
+func (c *Client) NewCreateBrokerSubAccountApiKeyService() *CreateBrokerSubAccountApiKeyService {
+	return &CreateBrokerSubAccountApiKeyService{c: c}
+}
+
+// NewDeleteBrokerSubAccountApiKeyService
+func (c *Client) NewDeleteBrokerSubAccountApiKeyService() *DeleteBrokerSubAccountApiKeyService {
+	return &DeleteBrokerSubAccountApiKeyService{c: c}
+}
+
+// NewListBrokerSubAccountsService
+func (c *Client) NewListBrokerSubAccountsService() *ListBrokerSubAccountsService {
+	return &ListBrokerSubAccountsService{c: c}
+}
+
+// NewEnableMarginForBrokerSubAccountService
+func (c *Client) NewEnableMarginForBrokerSubAccountService() *EnableMarginForBrokerSubAccountService {
+	return &EnableMarginForBrokerSubAccountService{c: c}
+}
+
+// NewEnableFuturesForBrokerSubAccountService
+func (c *Client) NewEnableFuturesForBrokerSubAccountService() *EnableFuturesForBrokerSubAccountService {
+	return &EnableFuturesForBrokerSubAccountService{c: c}
+}
+
+// NewAddIPRestrictionForBrokerSubAccountService
+func (c *Client) NewAddIPRestrictionForBrokerSubAccountService() *AddIPRestrictionForBrokerSubAccountService {
+	return &AddIPRestrictionForBrokerSubAccountService{c: c}
+}
+
+// NewIPRestrictionForBrokerSubAccountService
+func (c *Client) NewIPRestrictionForBrokerSubAccountService() *IPRestrictionForBrokerSubAccountService {
+	return &IPRestrictionForBrokerSubAccountService{c: c}
+}
+
+// NewUniversalTransferService
+func (c *Client) NewUniversalTransferService() *UniversalTransferService {
+	return &UniversalTransferService{c: c}
+}
+
+// NewUniversalTransferHistoryService
+func (c *Client) NewUniversalTransferHistoryService() *UniversalTransferHistoryService {
+	return &UniversalTransferHistoryService{c: c}
+}
+
+// NewCommissionRebateRecentRecordService
+func (c *Client) NewCommissionRebateRecentRecordService() *CommissionRebateRecentRecordService {
+	return &CommissionRebateRecentRecordService{c: c}
+}
+
+// NewFuturesCommissionRebateRecentRecordService
+func (c *Client) NewFuturesCommissionRebateRecentRecordService() *FuturesCommissionRebateRecentRecordService {
+	return &FuturesCommissionRebateRecentRecordService{c: c}
+}
+
+// NewBNBBurnStatusService
+func (c *Client) NewBNBBurnStatusService() *BNBBurnStatusService {
+	return &BNBBurnStatusService{c: c}
+}
+
+// NewSpotBNBBurnService
+func (c *Client) NewSpotBNBBurnService() *SpotBNBBurnService {
+	return &SpotBNBBurnService{c: c}
+}
+
+// NewMarginInterestBNBBurnService
+func (c *Client) NewMarginInterestBNBBurnService() *MarginInterestBNBBurnService {
+	return &MarginInterestBNBBurnService{c: c}
+}
