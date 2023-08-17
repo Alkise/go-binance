@@ -9,7 +9,7 @@ import (
 // StakingProductPositionService fetches the staking product positions
 type StakingProductPositionService struct {
 	c          *Client
-	product    StakingProduct
+	product    StakingProductType
 	productId  *string
 	positionId *int64
 	asset      *string
@@ -18,7 +18,7 @@ type StakingProductPositionService struct {
 }
 
 // Product sets the product parameter.
-func (s *StakingProductPositionService) Product(product StakingProduct) *StakingProductPositionService {
+func (s *StakingProductPositionService) Product(product StakingProductType) *StakingProductPositionService {
 	s.product = product
 	return s
 }
@@ -123,7 +123,7 @@ type StakingProductPosition struct {
 // StakingHistoryService fetches the staking history
 type StakingHistoryService struct {
 	c               *Client
-	product         StakingProduct
+	product         StakingProductType
 	transactionType StakingTransactionType
 	asset           *string
 	startTime       *int64
@@ -133,7 +133,7 @@ type StakingHistoryService struct {
 }
 
 // Product sets the product parameter.
-func (s *StakingHistoryService) Product(product StakingProduct) *StakingHistoryService {
+func (s *StakingHistoryService) Product(product StakingProductType) *StakingHistoryService {
 	s.product = product
 	return s
 }
@@ -229,13 +229,13 @@ type StakingHistoryTransaction struct {
 // StakingProductListService fetches available staking products
 type StakingProductListService struct {
 	c       *Client
-	product StakingProduct
+	product StakingProductType
 	asset   *string
 	current *int32
 	size    *int32
 }
 
-func (s *StakingProductListService) Product(product StakingProduct) *StakingProductListService {
+func (s *StakingProductListService) Product(product StakingProductType) *StakingProductListService {
 	s.product = product
 	return s
 }
@@ -309,13 +309,13 @@ type StakingProductQuota struct {
 
 type PurchaseStakingProductService struct {
 	c         *Client
-	product   StakingProduct
+	product   StakingProductType
 	productId string
 	amount    string
 	renewable *bool
 }
 
-func (s *PurchaseStakingProductService) Product(product StakingProduct) *PurchaseStakingProductService {
+func (s *PurchaseStakingProductService) Product(product StakingProductType) *PurchaseStakingProductService {
 	s.product = product
 	return s
 }
@@ -371,13 +371,13 @@ type PurchaseStakingProductResponse struct {
 
 type RedeemStakingProductService struct {
 	c          *Client
-	product    StakingProduct
+	product    StakingProductType
 	productId  string
 	positionId *int64
 	amount     *string
 }
 
-func (s *RedeemStakingProductService) Product(product StakingProduct) *RedeemStakingProductService {
+func (s *RedeemStakingProductService) Product(product StakingProductType) *RedeemStakingProductService {
 	s.product = product
 	return s
 }
@@ -432,11 +432,11 @@ type RedeemStakingProductResponse struct {
 
 type StakingProductQuotaService struct {
 	c         *Client
-	product   StakingProduct
+	product   StakingProductType
 	productId string
 }
 
-func (s *StakingProductQuotaService) Product(product StakingProduct) *StakingProductQuotaService {
+func (s *StakingProductQuotaService) Product(product StakingProductType) *StakingProductQuotaService {
 	s.product = product
 	return s
 }
@@ -472,12 +472,12 @@ type StakingProductPersonalQuota struct {
 
 type SetAutoStakingService struct {
 	c          *Client
-	product    StakingProduct
+	product    StakingProductType
 	positionId int64
 	renewable  bool
 }
 
-func (s *SetAutoStakingService) Product(product StakingProduct) *SetAutoStakingService {
+func (s *SetAutoStakingService) Product(product StakingProductType) *SetAutoStakingService {
 	s.product = product
 	return s
 }

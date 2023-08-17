@@ -74,7 +74,7 @@ type TransactionType string
 type LendingType string
 
 // StakingProduct define the staking product (locked staking, flexible defi staking, locked defi staking, ...)
-type StakingProduct string
+type StakingProductType string
 
 // StakingTransactionType define the staking transaction type (subscription, redemption, interest)
 type StakingTransactionType string
@@ -911,27 +911,27 @@ func (c *Client) NewStakingHistoryService() *StakingHistoryService {
 }
 
 // NewStakingProductListService
-func NewStakingProductListService() *StakingProductListService {
+func (c *Client) NewStakingProductListService() *StakingProductListService {
 	return &StakingProductListService{c: c}
 }
 
 // NewPurchaseStakingProductService
-func NewPurchaseStakingProductService() *PurchaseStakingProductService {
+func (c *Client) NewPurchaseStakingProductService() *PurchaseStakingProductService {
 	return &PurchaseStakingProductService{c: c}
 }
 
 // NewRedeemStakingProductService
-func NewRedeemStakingProductService() *RedeemStakingProductService {
+func (c *Client) NewRedeemStakingProductService() *RedeemStakingProductService {
 	return &RedeemStakingProductService{c: c}
 }
 
 // NewStakingProductQuotaService
-func NewStakingProductQuotaService() *StakingProductQuotaService {
+func (c *Client) NewStakingProductQuotaService() *StakingProductQuotaService {
 	return &StakingProductQuotaService{c: c}
 }
 
 // NewSetAutoStakingService
-func NewSetAutoStakingService() *SetAutoStakingService {
+func (c *Client) NewSetAutoStakingService() *SetAutoStakingService {
 	return &SetAutoStakingService{c: c}
 }
 
