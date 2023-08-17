@@ -910,6 +910,31 @@ func (c *Client) NewStakingHistoryService() *StakingHistoryService {
 	return &StakingHistoryService{c: c}
 }
 
+// NewStakingProductListService
+func NewStakingProductListService() *StakingProductListService {
+	return &StakingProductListService{c: c}
+}
+
+// NewPurchaseStakingProductService
+func NewPurchaseStakingProductService() *PurchaseStakingProductService {
+	return &PurchaseStakingProductService{c: c}
+}
+
+// NewRedeemStakingProductService
+func NewRedeemStakingProductService() *RedeemStakingProductService {
+	return &RedeemStakingProductService{c: c}
+}
+
+// NewStakingProductQuotaService
+func NewStakingProductQuotaService() *StakingProductQuotaService {
+	return &StakingProductQuotaService{c: c}
+}
+
+// NewSetAutoStakingService
+func NewSetAutoStakingService() *SetAutoStakingService {
+	return &SetAutoStakingService{c: c}
+}
+
 // NewGetAllLiquidityPoolService init the get all swap pool service
 func (c *Client) NewGetAllLiquidityPoolService() *GetAllLiquidityPoolService {
 	return &GetAllLiquidityPoolService{c: c}
