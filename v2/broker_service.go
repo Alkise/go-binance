@@ -471,8 +471,13 @@ func (s *IPRestrictionForBrokerSubAccountService) SubAccountApiKey(subAccountApi
 	return s
 }
 
-func (s *IPRestrictionForBrokerSubAccountService) IPRestrict(ipRestrict bool) *IPRestrictionForBrokerSubAccountService {
-	s.ipRestrict = ipRestrict
+func (s *IPRestrictionForBrokerSubAccountService) Status(status string) *IPRestrictionForBrokerSubAccountService {
+	s.status = status
+	return s
+}
+
+func (s *IPRestrictionForBrokerSubAccountService) IPAddress(ipAddress string) *IPRestrictionForBrokerSubAccountService {
+	s.ipAddress = ipAddress
 	return s
 }
 
