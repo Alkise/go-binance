@@ -86,7 +86,8 @@ type (
 		c                *Client
 		subAccountId     string
 		subAccountApiKey string
-		ipRestrict       bool
+		status           string
+		ipAddress        string
 	}
 	IPRestrictionForBrokerSubAccountResponse struct {
 		SubAccountId string   `json:"subaccountId"`
@@ -484,7 +485,10 @@ func (s *IPRestrictionForBrokerSubAccountService) Do(ctx context.Context, opts .
 	m := params{
 		"subAccountId":     s.subAccountId,
 		"subAccountApiKey": s.subAccountApiKey,
-		"ipRestrict":       s.ipRestrict,
+		"status":           s.status,
+	}
+	if len(ipAddress) != 0 {
+		m["ipAddress"] = s.ipAddress
 	}
 	r.setFormParams(m)
 	data, err := s.c.callAPI(ctx, r, opts...)
