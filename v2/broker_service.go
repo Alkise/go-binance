@@ -74,7 +74,7 @@ type (
 		c                *Client
 		subAccountId     string
 		subAccountApiKey string
-		ipAddress        string
+		ipAddress        *string
 	}
 	AddIPRestrictionForBrokerSubAccountResponse struct {
 		SubAccountId string `json:"subaccountId"`
@@ -477,14 +477,14 @@ func (s *IPRestrictionForBrokerSubAccountService) Status(status string) *IPRestr
 }
 
 func (s *IPRestrictionForBrokerSubAccountService) IPAddress(ipAddress string) *IPRestrictionForBrokerSubAccountService {
-	s.ipAddress = ipAddress
+	s.ipAddress = &ipAddress
 	return s
 }
 
 func (s *IPRestrictionForBrokerSubAccountService) Do(ctx context.Context, opts ...RequestOption) (res *IPRestrictionForBrokerSubAccountResponse, err error) {
 	r := &request{
 		method:   "POST",
-		endpoint: "/sapi/v1/broker/subAccountApi/ipRestriction",
+		endpoint: "/sapi/v2/broker/subAccountApi/ipRestriction",
 		secType:  secTypeSigned,
 	}
 	m := params{
@@ -492,7 +492,7 @@ func (s *IPRestrictionForBrokerSubAccountService) Do(ctx context.Context, opts .
 		"subAccountApiKey": s.subAccountApiKey,
 		"status":           s.status,
 	}
-	if len(s.ipAddress) != 0 {
+	if s.ipAddress != nil {
 		m["ipAddress"] = s.ipAddress
 	}
 	r.setFormParams(m)
