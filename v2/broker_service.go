@@ -74,7 +74,7 @@ type (
 		c                *Client
 		subAccountId     string
 		subAccountApiKey string
-		ipAddress        *string
+		ipAddress        string
 	}
 	AddIPRestrictionForBrokerSubAccountResponse struct {
 		SubAccountId string `json:"subaccountId"`
@@ -87,7 +87,7 @@ type (
 		subAccountId     string
 		subAccountApiKey string
 		status           string
-		ipAddress        string
+		ipAddress        *string
 	}
 	IPRestrictionForBrokerSubAccountResponse struct {
 		SubAccountId string   `json:"subaccountId"`
