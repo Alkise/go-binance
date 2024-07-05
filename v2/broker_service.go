@@ -492,7 +492,7 @@ func (s *IPRestrictionForBrokerSubAccountService) Do(ctx context.Context, opts .
 		"subAccountApiKey": s.subAccountApiKey,
 		"status":           s.status,
 	}
-	if len(ipAddress) != 0 {
+	if len(s.ipAddress) != 0 {
 		m["ipAddress"] = s.ipAddress
 	}
 	r.setFormParams(m)
