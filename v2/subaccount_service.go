@@ -2256,7 +2256,7 @@ type SubAccountApiAddIpRestrictionService struct {
 }
 
 type SubAccountApiAddIpRestrictServiceResponse struct {
-	Status     string   `json:"status"`
+	IpRestrict string   `json:"ipRestrict"`
 	IpList     []string `json:"ipList"`
 	UpdateTime int64    `json:"updateTime"`
 	ApiKey     string   `json:"apiKey"`
@@ -2290,7 +2290,7 @@ func (s *SubAccountApiAddIpRestrictionService) RecvWindow(recvWindow int64) *Sub
 func (s *SubAccountApiAddIpRestrictionService) Do(ctx context.Context, opts ...RequestOption) (res *SubAccountApiAddIpRestrictServiceResponse, err error) {
 	r := &request{
 		method:   http.MethodPost,
-		endpoint: "/sapi/v2/sub-account/subAccountApi/ipRestriction",
+		endpoint: "/sapi/v1/sub-account/subAccountApi/ipRestriction",
 		secType:  secTypeSigned,
 	}
 	r.setFormParam("email", s.email)
