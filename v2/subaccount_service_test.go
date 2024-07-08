@@ -1732,7 +1732,7 @@ func TestSubAccountApiIpRestrictionService(t *testing.T) {
 
 func (s *subAccountApiIpRestrictionServiceTestSuite) TestSubAccountApiIpRestriction() {
 	data := []byte(`{
-    "ipRestrict": "true",
+    "status": "2",
     "ipList": [
         "69.210.67.14",
         "8.34.21.10"

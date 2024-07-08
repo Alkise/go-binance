@@ -1161,3 +1161,92 @@ func (c *Client) NewSpotBNBBurnService() *SpotBNBBurnService {
 func (c *Client) NewMarginInterestBNBBurnService() *MarginInterestBNBBurnService {
 	return &MarginInterestBNBBurnService{c: c}
 }
+
+// Sub-Account spot transfer history
+func (c *Client) NewSubAccountSpotTransferHistoryService() *SubAccountSpotTransferHistoryService {
+	return &SubAccountSpotTransferHistoryService{c: c}
+}
+
+// Sub-Account futures transfer history
+func (c *Client) NewSubAccountFuturesTransferHistoryService() *SubAccountFuturesTransferHistoryService {
+	return &SubAccountFuturesTransferHistoryService{c: c}
+}
+
+// Get sub account deposit record
+func (c *Client) NewSubAccountDepositRecordService() *SubAccountDepositRecordService {
+	return &SubAccountDepositRecordService{c: c}
+}
+
+// Get sub account margin futures status
+func (c *Client) NewSubAccountMarginFuturesStatusService() *SubAccountMarginFuturesStatusService {
+	return &SubAccountMarginFuturesStatusService{c: c}
+}
+
+// sub account margin enable
+func (c *Client) NewSubAccountMarginEnableService() *SubAccountMarginEnableService {
+	return &SubAccountMarginEnableService{c: c}
+}
+
+// get sub-account margin account detail
+func (c *Client) NewSubAccountMarginAccountInfoService() *SubAccountMarginAccountInfoService {
+	return &SubAccountMarginAccountInfoService{c: c}
+}
+
+// get sub-account margin account summary
+func (c *Client) NewSubAccountMarginAccountSummaryService() *SubAccountMarginAccountSummaryService {
+	return &SubAccountMarginAccountSummaryService{c: c}
+}
+
+func (c *Client) NewSubAccountFuturesEnableService() *SubAccountFuturesEnableService {
+	return &SubAccountFuturesEnableService{c: c}
+}
+
+// get sub-account futures account summary, include U-M and C-M, v2 interface
+func (c *Client) NewSubAccountFuturesAccountSummaryService() *SubAccountFuturesAccountSummaryService {
+	return &SubAccountFuturesAccountSummaryService{c: c}
+}
+
+// get target sub-account futures position information, include U-M and C-M, v2 interface.
+func (c *Client) NewSubAccountFuturesPositionsService() *SubAccountFuturesPositionsService {
+	return &SubAccountFuturesPositionsService{c: c}
+}
+
+// execute sub-account margin account transfer
+func (c *Client) NewSubAccountMarginTransferService() *SubAccountMarginTransferService {
+	return &SubAccountMarginTransferService{c: c}
+}
+
+// sub-account transfer balance to master-account
+func (c *Client) NewSubAccountTransferSubToMasterService() *SubAccountTransferSubToMasterService {
+	return &SubAccountTransferSubToMasterService{c: c}
+}
+
+// Universal transfer of master and sub accounts
+func (c *Client) NewSubAccountUniversalTransferService() *SubAccountUniversalTransferService {
+	return &SubAccountUniversalTransferService{c: c}
+}
+
+// Query the universal transfer history of sub and master accounts
+func (c *Client) NewSubAccUniversalTransferHistoryService() *SubAccUniversalTransferHistoryService {
+	return &SubAccUniversalTransferHistoryService{c: c}
+}
+
+// Binance Leveraged Tokens enable
+func (c *Client) NewSubAccountBlvtEnableService() *SubAccountBlvtEnableService {
+	return &SubAccountBlvtEnableService{c: c}
+}
+
+// query sub-account api ip restriction
+func (c *Client) NewSubAccountApiIpRestrictionService() *SubAccountApiIpRestrictionService {
+	return &SubAccountApiIpRestrictionService{c: c}
+}
+
+// delete sub-account ip restriction
+func (c *Client) NewSubAccountApiDeleteIpRestrictionService() *SubAccountApiDeleteIpRestrictionService {
+	return &SubAccountApiDeleteIpRestrictionService{c: c}
+}
+
+// add sub-account ip restriction
+func (c *Client) NewSubAccountApiAddIpRestrictionService() *SubAccountApiAddIpRestrictionService {
+	return &SubAccountApiAddIpRestrictionService{c: c}
+}
