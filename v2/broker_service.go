@@ -492,7 +492,7 @@ func (s *IPRestrictionForBrokerSubAccountService) Do(ctx context.Context, opts .
 		"status":           s.status,
 	}
 	if s.ipAddress != nil {
-		m["ipAddress"] = s.ipAddress
+		m["ipAddress"] = *s.ipAddress
 	}
 	r.setFormParams(m)
 	data, err := s.c.callAPI(ctx, r, opts...)
