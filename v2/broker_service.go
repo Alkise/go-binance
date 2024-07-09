@@ -90,11 +90,10 @@ type (
 		ipAddress        *string
 	}
 	IPRestrictionForBrokerSubAccountResponse struct {
-		SubAccountId string   `json:"subaccountId"`
-		IpRestrict   string   `json:"ipRestrict"`
-		Apikey       string   `json:"apikey"`
-		IpList       []string `json:"ipList"`
-		UpdateTime   int64    `json:"updateTime"`
+		Status     string    `json:"status"`
+		IpList     *[]string `json:"ipList,omitempty"`
+		UpdateTime int64     `json:"updateTime"`
+		ApiKey     string    `json:"apiKey"`
 	}
 	UniversalTransferService struct {
 		c               *Client
