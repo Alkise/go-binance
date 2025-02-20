@@ -540,12 +540,19 @@ func (s *CancelAllOpenOrdersService) Do(ctx context.Context, opts ...RequestOpti
 
 // ListLiquidationOrdersService list liquidation orders
 type ListLiquidationOrdersService struct {
-	c         *Client
-	symbol    *string
-	pair      *string
+	c             *Client
+	autoCloseType *string
+	symbol        *string
+	// pair          *string
 	startTime *int64
 	endTime   *int64
 	limit     *int
+}
+
+// AutoCloseType set autoCloseType
+func (s *ListLiquidationOrdersService) AutoCloseType(autoCloseType string) *ListLiquidationOrdersService {
+	s.autoCloseType = &autoCloseType
+	return s
 }
 
 // Symbol set symbol
@@ -554,11 +561,11 @@ func (s *ListLiquidationOrdersService) Symbol(symbol string) *ListLiquidationOrd
 	return s
 }
 
-// Pair set pair
-func (s *ListLiquidationOrdersService) Pair(pair string) *ListLiquidationOrdersService {
-	s.pair = &pair
-	return s
-}
+// // Pair set pair
+// func (s *ListLiquidationOrdersService) Pair(pair string) *ListLiquidationOrdersService {
+// 	s.pair = &pair
+// 	return s
+// }
 
 // StartTime set startTime
 func (s *ListLiquidationOrdersService) StartTime(startTime int64) *ListLiquidationOrdersService {
@@ -582,12 +589,15 @@ func (s *ListLiquidationOrdersService) Limit(limit int) *ListLiquidationOrdersSe
 func (s *ListLiquidationOrdersService) Do(ctx context.Context, opts ...RequestOption) (res []*LiquidationOrder, err error) {
 	r := &request{
 		method:   http.MethodGet,
-		endpoint: "/dapi/v1/allForceOrders",
+		endpoint: "/dapi/v1/forceOrders",
 		secType:  secTypeNone,
 	}
-	if s.pair != nil {
-		r.setParam("pair", *s.pair)
+	if s.autoCloseType != nil {
+		r.setParam("autoCloseType", *s.autoCloseType)
 	}
+	// if s.pair != nil {
+	// 	r.setParam("pair", *s.pair)
+	// }
 	if s.symbol != nil {
 		r.setParam("symbol", *s.symbol)
 	}
@@ -614,14 +624,26 @@ func (s *ListLiquidationOrdersService) Do(ctx context.Context, opts ...RequestOp
 
 // LiquidationOrder define liquidation order
 type LiquidationOrder struct {
-	Symbol           string          `json:"symbol"`
-	Price            string          `json:"price"`
-	OrigQuantity     string          `json:"origQty"`
-	ExecutedQuantity string          `json:"executedQty"`
-	AveragePrice     string          `json:"avragePrice"`
-	Status           OrderStatusType `json:"status"`
-	TimeInForce      TimeInForceType `json:"timeInForce"`
-	Type             OrderType       `json:"type"`
-	Side             SideType        `json:"side"`
-	Time             int64           `json:"time"`
+	OrderId          int64            `json:"orderId"`
+	Symbol           string           `json:"symbol"`
+	Pair             string           `json:"pair"`
+	Status           OrderStatusType  `json:"status"`
+	ClientOrderId    string           `json:"clientOrderId"`
+	Price            string           `json:"price"`
+	AvgPrice         string           `json:"avgPrice"`
+	OrigQuantity     string           `json:"origQty"`
+	ExecutedQuantity string           `json:"executedQty"`
+	CumBase          string           `json:"cumBase"`
+	TimeInForce      TimeInForceType  `json:"timeInForce"`
+	Type             OrderType        `json:"type"`
+	ReduceOnly       bool             `json:"reduceOnly"`
+	ClosePosition    bool             `json:"closePosition"`
+	Side             SideType         `json:"side"`
+	PositionSide     PositionSideType `json:"positionSide"`
+	StopPrice        string           `json:"stopPrice"`
+	WorkingType      WorkingType      `json:"workingType"`
+	PriceProtect     bool             `json:"priceProtect"`
+	OrigType         OrderType        `json:"OrigType"`
+	Time             int64            `json:"time"`
+	UpdateTime       int64            `json:"updateTime"`
 }
