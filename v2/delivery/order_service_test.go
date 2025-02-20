@@ -572,7 +572,7 @@ func (s *orderServiceTestSuite) TestListLiquidationOrders() {
 			Price:            "9425.5",
 			OrigQuantity:     "1",
 			ExecutedQuantity: "1",
-			AveragePrice:     "9496.5",
+			AvgPrice:         "9496.5",
 			Status:           OrderStatusTypeFilled,
 			TimeInForce:      TimeInForceTypeIOC,
 			Type:             OrderTypeLimit,
@@ -592,7 +592,7 @@ func (s *orderServiceTestSuite) assertLiquidationEqual(e, a *LiquidationOrder) {
 	r.Equal(e.Price, a.Price, "Price")
 	r.Equal(e.OrigQuantity, a.OrigQuantity, "OrigQuantity")
 	r.Equal(e.ExecutedQuantity, a.ExecutedQuantity, "ExecutedQuantity")
-	r.Equal(e.AveragePrice, a.AveragePrice, "AveragePrice")
+	r.Equal(e.AvgPrice, a.AvgPrice, "AveragePrice")
 	r.Equal(e.Status, a.Status, "Status")
 	r.Equal(e.TimeInForce, a.TimeInForce, "TimeInForce")
 	r.Equal(e.Type, a.Type, "Type")
