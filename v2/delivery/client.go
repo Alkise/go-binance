@@ -377,6 +377,26 @@ func (c *Client) NewSetServerTimeService() *SetServerTimeService {
 	return &SetServerTimeService{c: c}
 }
 
+// NewAggTradesService init aggregate trades service
+func (c *Client) NewAggTradesService() *AggTradesService {
+	return &AggTradesService{c: c}
+}
+
+// NewRecentTradesService init recent trades service
+func (c *Client) NewRecentTradesService() *RecentTradesService {
+	return &RecentTradesService{c: c}
+}
+
+// NewHistoricalTradesService init listing trades service
+func (c *Client) NewHistoricalTradesService() *HistoricalTradesService {
+	return &HistoricalTradesService{c: c}
+}
+
+// NewListAccountTradeService init account trade list service
+func (c *Client) NewListAccountTradeService() *ListAccountTradeService {
+	return &ListAccountTradeService{c: c}
+}
+
 // NewKlinesService init klines service
 func (c *Client) NewKlinesService() *KlinesService {
 	return &KlinesService{c: c}
