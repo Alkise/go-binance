@@ -3,23 +3,23 @@ package binance
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"crypto/tls"
+	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/bitly/go-simplejson"
-	jsoniter "github.com/json-iterator/go"
 
 	"github.com/adshao/go-binance/v2/common"
 	"github.com/adshao/go-binance/v2/delivery"
 	"github.com/adshao/go-binance/v2/futures"
+	"github.com/adshao/go-binance/v2/options"
 )
 
 // SideType define side type of order
@@ -110,17 +110,31 @@ type UserUniversalTransferType string
 // UserUniversalTransferStatus define the user universal transfer status
 type UserUniversalTransferStatusType string
 
+// FuturesOrderBookHistoryDataType define the futures order book history data types
+type FuturesOrderBookHistoryDataType string
+
+// FutureAlgoType define future algo types
+type FuturesAlgoType string
+
+// FutureAlgoUrgencyType define future algo urgency type
+type FuturesAlgoUrgencyType string
+
+// FutureAlgoOrderStatusType define future algo order status
+type FuturesAlgoOrderStatusType string
+
 // Endpoints
-const (
-	baseAPIMainURL    = "https://api.binance.com"
-	baseAPITestnetURL = "https://testnet.binance.vision"
+var (
+	BaseAPIMainURL    = "https://api.binance.com"
+	BaseAPITestnetURL = "https://testnet.binance.vision"
 )
+
+// SelfTradePreventionMode define self trade prevention strategy
+type SelfTradePreventionMode string
+
+type MarginAccountBorrowRepayType string
 
 // UseTestnet switch all the API endpoints from production to the testnet
 var UseTestnet = false
-
-// Redefining the standard package
-var json = jsoniter.ConfigCompatibleWithStandardLibrary
 
 // Global enums
 const (
@@ -150,6 +164,7 @@ const (
 	OrderStatusTypePendingCancel   OrderStatusType = "PENDING_CANCEL"
 	OrderStatusTypeRejected        OrderStatusType = "REJECTED"
 	OrderStatusTypeExpired         OrderStatusType = "EXPIRED"
+	OrderStatusExpiredInMatch      OrderStatusType = "EXPIRED_IN_MATCH" // STP Expired
 
 	SymbolTypeSpot SymbolType = "SPOT"
 
@@ -181,8 +196,10 @@ const (
 	MarginTransferTypeToMargin MarginTransferType = 1
 	MarginTransferTypeToMain   MarginTransferType = 2
 
-	FuturesTransferTypeToFutures FuturesTransferType = 1
-	FuturesTransferTypeToMain    FuturesTransferType = 2
+	FuturesTransferTypeToFutures       FuturesTransferType = 1
+	FuturesTransferTypeToMain          FuturesTransferType = 2
+	FuturesTransferTypeToFuturesCM     FuturesTransferType = 3
+	FuturesTransferTypeFuturesCMToMain FuturesTransferType = 4
 
 	MarginLoanStatusTypePending   MarginLoanStatusType = "PENDING"
 	MarginLoanStatusTypeConfirmed MarginLoanStatusType = "CONFIRMED"
@@ -288,6 +305,28 @@ const (
 	UserUniversalTransferStatusTypePending   UserUniversalTransferStatusType = "PENDING"
 	UserUniversalTransferStatusTypeConfirmed UserUniversalTransferStatusType = "CONFIRMED"
 	UserUniversalTransferStatusTypeFailed    UserUniversalTransferStatusType = "FAILED"
+
+	FuturesOrderBookHistoryDataTypeTDepth FuturesOrderBookHistoryDataType = "T_DEPTH"
+	FuturesOrderBookHistoryDataTypeSDepth FuturesOrderBookHistoryDataType = "S_DEPTH"
+
+	FuturesAlgoTypeVp   FuturesAlgoType = "VP"
+	FuturesAlgoTypeTwap FuturesAlgoType = "TWAP"
+
+	FuturesAlgoUrgencyTypeLow    FuturesAlgoUrgencyType = "LOW"
+	FuturesAlgoUrgencyTypeMedium FuturesAlgoUrgencyType = "MEDIUM"
+	FuturesAlgoUrgencyTypeHigh   FuturesAlgoUrgencyType = "HIGH"
+
+	FuturesAlgoOrderStatusTypeWorking   FuturesAlgoOrderStatusType = "WORKING"
+	FuturesAlgoOrderStatusTypeFinished  FuturesAlgoOrderStatusType = "FINISHED"
+	FuturesAlgoOrderStatusTypeCancelled FuturesAlgoOrderStatusType = "CANCELLED"
+
+	SelfTradePreventionModeNone        SelfTradePreventionMode = "NONE"
+	SelfTradePreventionModeExpireTaker SelfTradePreventionMode = "EXPIRE_TAKER"
+	SelfTradePreventionModeExpireBoth  SelfTradePreventionMode = "EXPIRE_BOTH"
+	SelfTradePreventionModeExpireMaker SelfTradePreventionMode = "EXPIRE_MAKER"
+
+	MarginAccountBorrow MarginAccountBorrowRepayType = "BORROW"
+	MarginAccountRepay  MarginAccountBorrowRepayType = "REPAY"
 )
 
 func currentTimestamp() int64 {
@@ -310,9 +349,9 @@ func newJSON(data []byte) (j *simplejson.Json, err error) {
 // getAPIEndpoint return the base endpoint of the Rest API according the UseTestnet flag
 func getAPIEndpoint() string {
 	if UseTestnet {
-		return baseAPITestnetURL
+		return BaseAPITestnetURL
 	}
-	return baseAPIMainURL
+	return BaseAPIMainURL
 }
 
 // NewClient initialize an API client instance with API key and secret key.
@@ -322,6 +361,7 @@ func NewClient(apiKey, secretKey string) *Client {
 	return &Client{
 		APIKey:     apiKey,
 		SecretKey:  secretKey,
+		KeyType:    common.KeyTypeHmac,
 		BaseURL:    getAPIEndpoint(),
 		UserAgent:  "Binance/golang",
 		HTTPClient: http.DefaultClient,
@@ -342,6 +382,7 @@ func NewProxiedClient(apiKey, secretKey, proxyUrl string) *Client {
 	return &Client{
 		APIKey:    apiKey,
 		SecretKey: secretKey,
+		KeyType:   common.KeyTypeHmac,
 		BaseURL:   getAPIEndpoint(),
 		UserAgent: "Binance/golang",
 		HTTPClient: &http.Client{
@@ -361,12 +402,18 @@ func NewDeliveryClient(apiKey, secretKey string) *delivery.Client {
 	return delivery.NewClient(apiKey, secretKey)
 }
 
+// NewOptionsClient initialize client for options API
+func NewOptionsClient(apiKey, secretKey string) *options.Client {
+	return options.NewClient(apiKey, secretKey)
+}
+
 type doFunc func(req *http.Request) (*http.Response, error)
 
 // Client define API client
 type Client struct {
 	APIKey     string
 	SecretKey  string
+	KeyType    string
 	BaseURL    string
 	UserAgent  string
 	HTTPClient *http.Client
@@ -400,8 +447,12 @@ func (c *Client) parseRequest(r *request, opts ...RequestOption) (err error) {
 		r.setParam(timestampKey, currentTimestamp()-c.TimeOffset)
 	}
 	queryString := r.query.Encode()
+	// @ is a safe character and does not require escape, So replace it back.
+	queryString = strings.ReplaceAll(queryString, "%40", "@")
 	body := &bytes.Buffer{}
 	bodyString := r.form.Encode()
+	// @ is a safe character and does not require escape, So replace it back.
+	bodyString = strings.ReplaceAll(bodyString, "%40", "@")
 	header := http.Header{}
 	if r.header != nil {
 		header = r.header.Clone()
@@ -413,16 +464,22 @@ func (c *Client) parseRequest(r *request, opts ...RequestOption) (err error) {
 	if r.secType == secTypeAPIKey || r.secType == secTypeSigned {
 		header.Set("X-MBX-APIKEY", c.APIKey)
 	}
-
+	kt := c.KeyType
+	if kt == "" {
+		kt = common.KeyTypeHmac
+	}
+	sf, err := common.SignFunc(kt)
+	if err != nil {
+		return err
+	}
 	if r.secType == secTypeSigned {
 		raw := fmt.Sprintf("%s%s", queryString, bodyString)
-		mac := hmac.New(sha256.New, []byte(c.SecretKey))
-		_, err = mac.Write([]byte(raw))
+		sign, err := sf(c.SecretKey, raw)
 		if err != nil {
 			return err
 		}
 		v := url.Values{}
-		v.Set(signatureKey, fmt.Sprintf("%x", (mac.Sum(nil))))
+		v.Set(signatureKey, *sign)
 		if queryString == "" {
 			queryString = v.Encode()
 		} else {
@@ -432,7 +489,7 @@ func (c *Client) parseRequest(r *request, opts ...RequestOption) (err error) {
 	if queryString != "" {
 		fullURL = fmt.Sprintf("%s?%s", fullURL, queryString)
 	}
-	c.debug("full url: %s, body: %s", fullURL, bodyString)
+	c.debug("full url: %s, body: %s\n", fullURL, bodyString)
 
 	r.fullURL = fullURL
 	r.header = header
@@ -451,7 +508,7 @@ func (c *Client) callAPI(ctx context.Context, r *request, opts ...RequestOption)
 	}
 	req = req.WithContext(ctx)
 	req.Header = r.header
-	c.debug("request: %#v", req)
+	c.debug("request: %#v\n", req)
 	f := c.do
 	if f == nil {
 		f = c.HTTPClient.Do
@@ -460,27 +517,30 @@ func (c *Client) callAPI(ctx context.Context, r *request, opts ...RequestOption)
 	if err != nil {
 		return []byte{}, err
 	}
-	data, err = ioutil.ReadAll(res.Body)
+	data, err = io.ReadAll(res.Body)
 	if err != nil {
 		return []byte{}, err
 	}
 	defer func() {
 		cerr := res.Body.Close()
-		// Only overwrite the retured error if the original error was nil and an
+		// Only overwrite the returned error if the original error was nil and an
 		// error occurred while closing the body.
 		if err == nil && cerr != nil {
 			err = cerr
 		}
 	}()
-	c.debug("response: %#v", res)
-	c.debug("response body: %s", string(data))
-	c.debug("response status code: %d", res.StatusCode)
+	c.debug("response: %#v\n", res)
+	c.debug("response body: %s\n", string(data))
+	c.debug("response status code: %d\n", res.StatusCode)
 
 	if res.StatusCode >= http.StatusBadRequest {
 		apiErr := new(common.APIError)
 		e := json.Unmarshal(data, apiErr)
 		if e != nil {
-			c.debug("failed to unmarshal json: %s", e)
+			c.debug("failed to unmarshal json: %s\n", e)
+		}
+		if !apiErr.IsValid() {
+			apiErr.Response = data
 		}
 		return nil, apiErr
 	}
@@ -528,6 +588,10 @@ func (c *Client) NewKlinesService() *KlinesService {
 	return &KlinesService{c: c}
 }
 
+func (c *Client) NewUiKlinesService() *UiKlinesService {
+	return &UiKlinesService{c: c}
+}
+
 // NewListPriceChangeStatsService init list prices change stats service
 func (c *Client) NewListPriceChangeStatsService() *ListPriceChangeStatsService {
 	return &ListPriceChangeStatsService{c: c}
@@ -536,6 +600,10 @@ func (c *Client) NewListPriceChangeStatsService() *ListPriceChangeStatsService {
 // NewListPricesService init listing prices service
 func (c *Client) NewListPricesService() *ListPricesService {
 	return &ListPricesService{c: c}
+}
+
+func (c *Client) NewTradingDayTickerService() *TradingDayTickerService {
+	return &TradingDayTickerService{c: c}
 }
 
 // NewListBookTickersService init listing booking tickers service
@@ -709,13 +777,20 @@ func (c *Client) NewMarginTransferService() *MarginTransferService {
 }
 
 // NewMarginLoanService init margin account loan service
+// Deprecated: use NewMarginBorrowRepayService instead
 func (c *Client) NewMarginLoanService() *MarginLoanService {
 	return &MarginLoanService{c: c}
 }
 
 // NewMarginRepayService init margin account repay service
+// Deprecated: use NewMarginBorrowRepayService instead
 func (c *Client) NewMarginRepayService() *MarginRepayService {
 	return &MarginRepayService{c: c}
+}
+
+// NewMarginBorrowRepayService init margin account borrow/repay service
+func (c *Client) NewMarginBorrowRepayService() *MarginBorrowRepayService {
+	return &MarginBorrowRepayService{c: c}
 }
 
 // NewCreateMarginOrderService init creating margin order service
@@ -932,6 +1007,31 @@ func (c *Client) NewConvertTradeHistoryService() *ConvertTradeHistoryService {
 	return &ConvertTradeHistoryService{c: c}
 }
 
+// NewConvertExchangeInfoService init the convert exchange info service
+func (c *Client) NewConvertExchangeInfoService() *ConvertExchangeInfoService {
+	return &ConvertExchangeInfoService{c: c}
+}
+
+// NewConvertAssetInfoService init the convert asset info service
+func (c *Client) NewConvertAssetInfoService() *ConvertAssetInfoService {
+	return &ConvertAssetInfoService{c: c}
+}
+
+// NewConvertQuoteService init the convert quote service
+func (c *Client) NewConvertQuoteService() *ConvertGetQuoteService {
+	return &ConvertGetQuoteService{c: c}
+}
+
+// NewConvertAcceptQuoteService init the convert accept quote service
+func (c *Client) NewConvertAcceptQuoteService() *ConvertAcceptQuoteService {
+	return &ConvertAcceptQuoteService{c: c}
+}
+
+// NewConvertOrderStatusService init the convert order status service
+func (c *Client) NewConvertOrderStatusService() *ConvertOrderStatusService {
+	return &ConvertOrderStatusService{c: c}
+}
+
 // NewGetIsolatedMarginAllPairsService init get isolated margin all pairs service
 func (c *Client) NewGetIsolatedMarginAllPairsService() *GetIsolatedMarginAllPairsService {
 	return &GetIsolatedMarginAllPairsService{c: c}
@@ -992,7 +1092,7 @@ func (c *Client) NewGetAllLiquidityPoolService() *GetAllLiquidityPoolService {
 	return &GetAllLiquidityPoolService{c: c}
 }
 
-// NewGetLiquidityPoolDetailService init the get liquidity pool detial service
+// NewGetLiquidityPoolDetailService init the get liquidity pool detail service
 func (c *Client) NewGetLiquidityPoolDetailService() *GetLiquidityPoolDetailService {
 	return &GetLiquidityPoolDetailService{c: c}
 }
@@ -1027,7 +1127,7 @@ func (c *Client) NewClaimRewardService() *ClaimRewardService {
 	return &ClaimRewardService{c: c}
 }
 
-// NewRemoveLiquidityService init the service to remvoe liquidity
+// NewRemoveLiquidityService init the service to remove liquidity
 func (c *Client) NewRemoveLiquidityService() *RemoveLiquidityService {
 	return &RemoveLiquidityService{c: c, assets: []string{}}
 }
@@ -1160,6 +1260,31 @@ func (c *Client) NewSpotBNBBurnService() *SpotBNBBurnService {
 // NewMarginInterestBNBBurnService
 func (c *Client) NewMarginInterestBNBBurnService() *MarginInterestBNBBurnService {
 	return &MarginInterestBNBBurnService{c: c}
+}
+
+// NewSubAccountFuturesSummaryV1Service Get Summary of Sub-account's Futures Account (For Master Account)
+func (c *Client) NewSubAccountFuturesSummaryV1Service() *SubAccountFuturesSummaryV1Service {
+	return &SubAccountFuturesSummaryV1Service{c: c}
+}
+
+// NewSubAccountFuturesTransferV1Service Futures Transfer for Sub-account (For Master Account)
+func (c *Client) NewSubAccountFuturesTransferV1Service() *SubAccountFuturesTransferV1Service {
+	return &SubAccountFuturesTransferV1Service{c: c}
+}
+
+// NewSubAccountTransferHistoryService Transfer History for Sub-account (For Sub-account)
+func (c *Client) NewSubAccountTransferHistoryService() *SubAccountTransferHistoryService {
+	return &SubAccountTransferHistoryService{c: c}
+}
+
+// NewListUserUniversalTransferService Query User Universal Transfer History
+func (c *Client) NewListUserUniversalTransferService() *ListUserUniversalTransferService {
+	return &ListUserUniversalTransferService{c: c}
+}
+
+// Create virtual sub-account
+func (c *Client) NewCreateVirtualSubAccountService() *CreateVirtualSubAccountService {
+	return &CreateVirtualSubAccountService{c: c}
 }
 
 // Sub-Account spot transfer history
@@ -1318,22 +1443,44 @@ func (c *Client) NewSubAccountFuturesAccountV2Service() *SubAccountFuturesAccoun
 	return &SubAccountFuturesAccountV2Service{c: c}
 }
 
-// NewSubAccountFuturesSummaryV1Service Get Summary of Sub-account's Futures Account (For Master Account)
-func (c *Client) NewSubAccountFuturesSummaryV1Service() *SubAccountFuturesSummaryV1Service {
-	return &SubAccountFuturesSummaryV1Service{c: c}
+// Futures order book history service
+func (c *Client) NewFuturesOrderBookHistoryService() *FuturesOrderBookHistoryService {
+	return &FuturesOrderBookHistoryService{c: c}
 }
 
-// NewSubAccountFuturesTransferV1Service Futures Transfer for Sub-account (For Master Account)
-func (c *Client) NewSubAccountFuturesTransferV1Service() *SubAccountFuturesTransferV1Service {
-	return &SubAccountFuturesTransferV1Service{c: c}
+// NewCreateFuturesAlgoVpOrderService create futures algo vp order
+func (c *Client) NewCreateFuturesAlgoVpOrderService() *CreateFuturesAlgoVpOrderService {
+	return &CreateFuturesAlgoVpOrderService{c: c}
 }
 
-// NewSubAccountTransferHistoryService Transfer History for Sub-account (For Sub-account)
-func (c *Client) NewSubAccountTransferHistoryService() *SubAccountTransferHistoryService {
-	return &SubAccountTransferHistoryService{c: c}
+// NewCreateFuturesAlgoTwapOrderService create futures algo twap order
+func (c *Client) NewCreateFuturesAlgoTwapOrderService() *CreateFuturesAlgoTwapOrderService {
+	return &CreateFuturesAlgoTwapOrderService{c: c}
 }
 
-// Create virtual sub-account
-func (c *Client) NewCreateVirtualSubAccountService() *CreateVirtualSubAccountService {
-	return &CreateVirtualSubAccountService{c: c}
+// NewListOpenFuturesAlgoOrdersService list open futures algo orders
+func (c *Client) NewListOpenFuturesAlgoOrdersService() *ListOpenFuturesAlgoOrdersService {
+	return &ListOpenFuturesAlgoOrdersService{c: c}
 }
+
+// NewListHistoryFuturesAlgoOrdersService list history futures algo orders
+func (c *Client) NewListHistoryFuturesAlgoOrdersService() *ListHistoryFuturesAlgoOrdersService {
+	return &ListHistoryFuturesAlgoOrdersService{c: c}
+}
+
+// NewCancelFuturesAlgoOrderService cancel future algo order
+func (c *Client) NewCancelFuturesAlgoOrderService() *CancelFuturesAlgoOrderService {
+	return &CancelFuturesAlgoOrderService{c: c}
+}
+
+// NewGetFuturesAlgoSubOrdersService get futures algo sub orders
+func (c *Client) NewGetFuturesAlgoSubOrdersService() *GetFuturesAlgoSubOrdersService {
+	return &GetFuturesAlgoSubOrdersService{c: c}
+}
+
+// ----- simple earn service -----
+func (c *Client) NewSimpleEarnService() *SimpleEarnService {
+	return &SimpleEarnService{c: c}
+}
+
+// ----- end simple earn service -----

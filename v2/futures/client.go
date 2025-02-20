@@ -3,12 +3,10 @@ package futures
 import (
 	"bytes"
 	"context"
-	"crypto/hmac"
-	"crypto/sha256"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"net/url"
@@ -41,6 +39,10 @@ type OrderExecutionType string
 // OrderStatusType define order status type
 type OrderStatusType string
 
+// PriceMatchType define priceMatch type
+// Can't be passed together with price
+type PriceMatchType string
+
 // SymbolType define symbol type
 type SymbolType string
 
@@ -71,10 +73,13 @@ type UserDataEventReasonType string
 // ForceOrderCloseType define reason type for force order
 type ForceOrderCloseType string
 
+// SelfTradePreventionMode define self trade prevention strategy
+type SelfTradePreventionMode string
+
 // Endpoints
-const (
-	baseApiMainUrl    = "https://fapi.binance.com"
-	baseApiTestnetUrl = "https://testnet.binancefuture.com"
+var (
+	BaseApiMainUrl    = "https://fapi.binance.com"
+	BaseApiTestnetUrl = "https://testnet.binancefuture.com"
 )
 
 // Global enums
@@ -93,6 +98,7 @@ const (
 	OrderTypeTakeProfit         OrderType = "TAKE_PROFIT"
 	OrderTypeTakeProfitMarket   OrderType = "TAKE_PROFIT_MARKET"
 	OrderTypeTrailingStopMarket OrderType = "TRAILING_STOP_MARKET"
+	OrderTypeLiquidation        OrderType = "LIQUIDATION"
 
 	TimeInForceTypeGTC TimeInForceType = "GTC" // Good Till Cancel
 	TimeInForceTypeIOC TimeInForceType = "IOC" // Immediate or Cancel
@@ -118,6 +124,16 @@ const (
 	OrderStatusTypeExpired         OrderStatusType = "EXPIRED"
 	OrderStatusTypeNewInsurance    OrderStatusType = "NEW_INSURANCE"
 	OrderStatusTypeNewADL          OrderStatusType = "NEW_ADL"
+
+	PriceMatchTypeOpponent   PriceMatchType = "OPPONENT"
+	PriceMatchTypeOpponent5  PriceMatchType = "OPPONENT_5"
+	PriceMatchTypeOpponent10 PriceMatchType = "OPPONENT_10"
+	PriceMatchTypeOpponent20 PriceMatchType = "OPPONENT_20"
+	PriceMatchTypeQueue      PriceMatchType = "QUEUE"
+	PriceMatchTypeQueue5     PriceMatchType = "QUEUE_5"
+	PriceMatchTypeQueue10    PriceMatchType = "QUEUE_10"
+	PriceMatchTypeQueue20    PriceMatchType = "QUEUE_20"
+	PriceMatchTypeNone       PriceMatchType = "NONE"
 
 	SymbolTypeFuture SymbolType = "FUTURE"
 
@@ -147,13 +163,16 @@ const (
 	MarginTypeIsolated MarginType = "ISOLATED"
 	MarginTypeCrossed  MarginType = "CROSSED"
 
-	ContractTypePerpetual ContractType = "PERPETUAL"
+	ContractTypePerpetual      ContractType = "PERPETUAL"
+	ContractTypeCurrentQuarter ContractType = "CURRENT_QUARTER"
+	ContractTypeNextQuarter    ContractType = "NEXT_QUARTER"
 
 	UserDataEventTypeListenKeyExpired    UserDataEventType = "listenKeyExpired"
 	UserDataEventTypeMarginCall          UserDataEventType = "MARGIN_CALL"
 	UserDataEventTypeAccountUpdate       UserDataEventType = "ACCOUNT_UPDATE"
 	UserDataEventTypeOrderTradeUpdate    UserDataEventType = "ORDER_TRADE_UPDATE"
 	UserDataEventTypeAccountConfigUpdate UserDataEventType = "ACCOUNT_CONFIG_UPDATE"
+	UserDataEventTypeTradeLite           UserDataEventType = "TRADE_LITE"
 
 	UserDataEventReasonTypeDeposit             UserDataEventReasonType = "DEPOSIT"
 	UserDataEventReasonTypeWithdraw            UserDataEventReasonType = "WITHDRAW"
@@ -172,6 +191,11 @@ const (
 
 	ForceOrderCloseTypeLiquidation ForceOrderCloseType = "LIQUIDATION"
 	ForceOrderCloseTypeADL         ForceOrderCloseType = "ADL"
+
+	SelfTradePreventionModeNone        SelfTradePreventionMode = "NONE"
+	SelfTradePreventionModeExpireTaker SelfTradePreventionMode = "EXPIRE_TAKER"
+	SelfTradePreventionModeExpireBoth  SelfTradePreventionMode = "EXPIRE_BOTH"
+	SelfTradePreventionModeExpireMaker SelfTradePreventionMode = "EXPIRE_MAKER"
 
 	timestampKey  = "timestamp"
 	signatureKey  = "signature"
@@ -193,9 +217,9 @@ func newJSON(data []byte) (j *simplejson.Json, err error) {
 // getApiEndpoint return the base endpoint of the WS according the UseTestnet flag
 func getApiEndpoint() string {
 	if UseTestnet {
-		return baseApiTestnetUrl
+		return BaseApiTestnetUrl
 	}
-	return baseApiMainUrl
+	return BaseApiMainUrl
 }
 
 // NewClient initialize an API client instance with API key and secret key.
@@ -205,6 +229,7 @@ func NewClient(apiKey, secretKey string) *Client {
 	return &Client{
 		APIKey:     apiKey,
 		SecretKey:  secretKey,
+		KeyType:    common.KeyTypeHmac,
 		BaseURL:    getApiEndpoint(),
 		UserAgent:  "Binance/golang",
 		HTTPClient: http.DefaultClient,
@@ -225,6 +250,7 @@ func NewProxiedClient(apiKey, secretKey, proxyUrl string) *Client {
 	return &Client{
 		APIKey:    apiKey,
 		SecretKey: secretKey,
+		KeyType:   common.KeyTypeHmac,
 		BaseURL:   getApiEndpoint(),
 		UserAgent: "Binance/golang",
 		HTTPClient: &http.Client{
@@ -240,6 +266,7 @@ type doFunc func(req *http.Request) (*http.Response, error)
 type Client struct {
 	APIKey     string
 	SecretKey  string
+	KeyType    string
 	BaseURL    string
 	UserAgent  string
 	HTTPClient *http.Client
@@ -286,16 +313,22 @@ func (c *Client) parseRequest(r *request, opts ...RequestOption) (err error) {
 	if r.secType == secTypeAPIKey || r.secType == secTypeSigned {
 		header.Set("X-MBX-APIKEY", c.APIKey)
 	}
-
+	kt := c.KeyType
+	if kt == "" {
+		kt = common.KeyTypeHmac
+	}
+	sf, err := common.SignFunc(kt)
+	if err != nil {
+		return err
+	}
 	if r.secType == secTypeSigned {
 		raw := fmt.Sprintf("%s%s", queryString, bodyString)
-		mac := hmac.New(sha256.New, []byte(c.SecretKey))
-		_, err = mac.Write([]byte(raw))
+		sign, err := sf(c.SecretKey, raw)
 		if err != nil {
 			return err
 		}
 		v := url.Values{}
-		v.Set(signatureKey, fmt.Sprintf("%x", (mac.Sum(nil))))
+		v.Set(signatureKey, *sign)
 		if queryString == "" {
 			queryString = v.Encode()
 		} else {
@@ -305,7 +338,7 @@ func (c *Client) parseRequest(r *request, opts ...RequestOption) (err error) {
 	if queryString != "" {
 		fullURL = fmt.Sprintf("%s?%s", fullURL, queryString)
 	}
-	c.debug("full url: %s, body: %s", fullURL, bodyString)
+	c.debug("full url: %s, body: %s\n", fullURL, bodyString)
 
 	r.fullURL = fullURL
 	r.header = header
@@ -324,7 +357,7 @@ func (c *Client) callAPI(ctx context.Context, r *request, opts ...RequestOption)
 	}
 	req = req.WithContext(ctx)
 	req.Header = r.header
-	c.debug("request: %#v", req)
+	c.debug("request: %#v\n", req)
 	f := c.do
 	if f == nil {
 		f = c.HTTPClient.Do
@@ -333,29 +366,32 @@ func (c *Client) callAPI(ctx context.Context, r *request, opts ...RequestOption)
 	if err != nil {
 		return []byte{}, &http.Header{}, err
 	}
-	data, err = ioutil.ReadAll(res.Body)
+	data, err = io.ReadAll(res.Body)
 	if err != nil {
 		return []byte{}, &http.Header{}, err
 	}
 	defer func() {
 		cerr := res.Body.Close()
-		// Only overwrite the retured error if the original error was nil and an
+		// Only overwrite the returned error if the original error was nil and an
 		// error occurred while closing the body.
 		if err == nil && cerr != nil {
 			err = cerr
 		}
 	}()
-	c.debug("response: %#v", res)
-	c.debug("response body: %s", string(data))
-	c.debug("response status code: %d", res.StatusCode)
+	c.debug("response: %#v\n", res)
+	c.debug("response body: %s\n", string(data))
+	c.debug("response status code: %d\n", res.StatusCode)
 
 	if res.StatusCode >= http.StatusBadRequest {
 		apiErr := new(common.APIError)
 		e := json.Unmarshal(data, apiErr)
 		if e != nil {
-			c.debug("failed to unmarshal json: %s", e)
+			c.debug("failed to unmarshal json: %s\n", e)
 		}
-		return nil, &http.Header{}, apiErr
+		if !apiErr.IsValid() {
+			apiErr.Response = data
+		}
+		return nil, &res.Header, apiErr
 	}
 	return data, &res.Header, nil
 }
@@ -436,9 +472,19 @@ func (c *Client) NewCreateOrderService() *CreateOrderService {
 	return &CreateOrderService{c: c}
 }
 
+// NewModifyOrderService init creating order service
+func (c *Client) NewModifyOrderService() *ModifyOrderService {
+	return &ModifyOrderService{c: c}
+}
+
 // NewCreateBatchOrdersService init creating batch order service
 func (c *Client) NewCreateBatchOrdersService() *CreateBatchOrdersService {
 	return &CreateBatchOrdersService{c: c}
+}
+
+// NewModifyBatchOrdersService init modifying batch order service
+func (c *Client) NewModifyBatchOrdersService() *ModifyBatchOrdersService {
+	return &ModifyBatchOrdersService{c: c}
 }
 
 // NewGetOrderService init get order service
@@ -486,9 +532,12 @@ func (c *Client) NewGetBalanceService() *GetBalanceService {
 	return &GetBalanceService{c: c}
 }
 
-// NewGetPositionRiskService init getting position risk service
 func (c *Client) NewGetPositionRiskService() *GetPositionRiskService {
 	return &GetPositionRiskService{c: c}
+}
+
+func (c *Client) NewGetPositionRiskV3Service() *GetPositionRiskV3Service {
+	return &GetPositionRiskV3Service{c: c}
 }
 
 // NewGetPositionMarginHistoryService init getting position margin history service
@@ -536,9 +585,19 @@ func (c *Client) NewPremiumIndexService() *PremiumIndexService {
 	return &PremiumIndexService{c: c}
 }
 
+// NewPremiumIndexKlinesService init premium index klines service
+func (c *Client) NewPremiumIndexKlinesService() *PremiumIndexKlinesService {
+	return &PremiumIndexKlinesService{c: c}
+}
+
 // NewFundingRateService init funding rate service
 func (c *Client) NewFundingRateService() *FundingRateService {
 	return &FundingRateService{c: c}
+}
+
+// NewFundingRateInfoService init funding rate info service
+func (c *Client) NewFundingRateInfoService() *FundingRateInfoService {
+	return &FundingRateInfoService{c: c}
 }
 
 // NewListUserLiquidationOrdersService init list user's liquidation orders service
@@ -619,4 +678,68 @@ func (c *Client) NewLongShortRatioService() *LongShortRatioService {
 // NewTradeFeeService init the trade fee service
 func (c *Client) NewTradeFeeService() *TradeFeeService {
 	return &TradeFeeService{c: c}
+}
+
+func (c *Client) NewDeliveryPriceService() *DeliveryPriceService {
+	return &DeliveryPriceService{c: c}
+}
+
+func (c *Client) NewTopLongShortAccountRatioService() *TopLongShortAccountRatioService {
+	return &TopLongShortAccountRatioService{c: c}
+}
+
+func (c *Client) NewTopLongShortPositionRatioService() *TopLongShortPositionRatioService {
+	return &TopLongShortPositionRatioService{c: c}
+}
+
+func (c *Client) NewTakerLongShortRatioService() *TakerLongShortRatioService {
+	return &TakerLongShortRatioService{c: c}
+}
+
+func (c *Client) NewBasisService() *BasisService {
+	return &BasisService{c: c}
+}
+
+func (c *Client) NewIndexInfoService() *IndexInfoService {
+	return &IndexInfoService{c: c}
+}
+
+func (c *Client) NewAssetIndexService() *AssetIndexService {
+	return &AssetIndexService{c: c}
+}
+
+func (c *Client) NewConstituentsService() *ConstituentsService {
+	return &ConstituentsService{c: c}
+}
+
+func (c *Client) NewLvtKlinesService() *LvtKlinesService {
+	return &LvtKlinesService{c: c}
+}
+
+func (c *Client) NewGetFeeBurnService() *GetFeeBurnService {
+	return &GetFeeBurnService{c: c}
+}
+
+func (c *Client) NewFeeBurnService() *FeeBurnService {
+	return &FeeBurnService{c: c}
+}
+
+// NewListConvertAssetsService init list convert assets service
+func (c *Client) NewListConvertExchangeInfoService() *ListConvertExchangeInfoService {
+	return &ListConvertExchangeInfoService{c: c}
+}
+
+// NewCreateConvertQuoteService init create convert quote service
+func (c *Client) NewCreateConvertQuoteService() *CreateConvertQuoteService {
+	return &CreateConvertQuoteService{c: c}
+}
+
+// NewCreateConvertService init accept convert quote service
+func (c *Client) NewConvertAcceptService() *ConvertAcceptService {
+	return &ConvertAcceptService{c: c}
+}
+
+// NewGetConvertStatusService init get convert status service
+func (c *Client) NewGetConvertStatusService() *ConvertStatusService {
+	return &ConvertStatusService{c: c}
 }
