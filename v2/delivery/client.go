@@ -526,3 +526,8 @@ func (c *Client) NewFundingRateService() *FundingRateService {
 func (c *Client) NewTradeFeeService() *TradeFeeService {
 	return &TradeFeeService{c: c}
 }
+
+// NewGetIncomeHistoryService init getting income history service
+func (c *Client) NewGetIncomeHistoryService() *GetIncomeHistoryService {
+	return &GetIncomeHistoryService{c: c}
+}
