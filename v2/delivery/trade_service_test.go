@@ -210,19 +210,19 @@ func (s *tradeServiceTestSuite) TestAccountTradeList() {
 	r.Len(trades, 1)
 	e := &AccountTrade{
 		Buyer:           false,
-		Commission:      "-0.07819010",
+		Commission:      "0.00000454",
 		CommissionAsset: "USDT",
 		ID:              698759,
 		Maker:           false,
 		OrderID:         25851813,
-		Price:           "7819.01",
-		Quantity:        "0.002",
-		QuoteQuantity:   "15.63802",
-		RealizedPnl:     "-0.91539999",
+		Price:           "8800",
+		Quantity:        "1",
+		BaseQuantity:    "0.01136364",
+		RealizedPnl:     "0",
 		Side:            SideTypeSell,
 		PositionSide:    PositionSideTypeShort,
 		Symbol:          symbol,
-		Time:            1569514978020,
+		Time:            1590743483586,
 	}
 	s.assertAccountTradeEqual(e, trades[0])
 }
@@ -237,7 +237,7 @@ func (s *tradeServiceTestSuite) assertAccountTradeEqual(e, a *AccountTrade) {
 	r.Equal(e.OrderID, a.OrderID, "OrderID")
 	r.Equal(e.Price, a.Price, "Price")
 	r.Equal(e.Quantity, a.Quantity, "Quantity")
-	r.Equal(e.QuoteQuantity, a.QuoteQuantity, "QuoteQuantity")
+	r.Equal(e.BaseQuantity, a.BaseQuantity, "BaseQuantity")
 	r.Equal(e.RealizedPnl, a.RealizedPnl, "RealizedPnl")
 	r.Equal(e.Side, a.Side, "Side")
 	r.Equal(e.PositionSide, a.PositionSide, "PositionSide")

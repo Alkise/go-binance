@@ -211,7 +211,8 @@ func (s *RecentTradesService) Do(ctx context.Context, opts ...RequestOption) (re
 // ListAccountTradeService define account trade list service
 type ListAccountTradeService struct {
 	c         *Client
-	symbol    string
+	symbol    *string
+	pair      *string
 	orderId   *int64
 	startTime *int64
 	endTime   *int64
@@ -221,7 +222,13 @@ type ListAccountTradeService struct {
 
 // Symbol set symbol
 func (s *ListAccountTradeService) Symbol(symbol string) *ListAccountTradeService {
-	s.symbol = symbol
+	s.symbol = &symbol
+	return s
+}
+
+// Pair set pair
+func (s *ListAccountTradeService) Pair(pair string) *ListAccountTradeService {
+	s.pair = &pair
 	return s
 }
 
@@ -292,18 +299,20 @@ func (s *ListAccountTradeService) Do(ctx context.Context, opts ...RequestOption)
 
 // AccountTrade define account trade
 type AccountTrade struct {
-	Buyer           bool             `json:"buyer"`
-	Commission      string           `json:"commission"`
-	CommissionAsset string           `json:"commissionAsset"`
+	Symbol          string           `json:"symbol"`
 	ID              int64            `json:"id"`
-	Maker           bool             `json:"maker"`
 	OrderID         int64            `json:"orderId"`
+	Pair            string           `json:"pair"`
+	Side            SideType         `json:"side"`
 	Price           string           `json:"price"`
 	Quantity        string           `json:"qty"`
-	QuoteQuantity   string           `json:"quoteQty"`
 	RealizedPnl     string           `json:"realizedPnl"`
-	Side            SideType         `json:"side"`
-	PositionSide    PositionSideType `json:"positionSide"`
-	Symbol          string           `json:"symbol"`
+	MarginAsset     string           `json:"marginAsset"`
+	BaseQuantity    string           `json:"baseQty"`
+	Commission      string           `json:"commission"`
+	CommissionAsset string           `json:"commissionAsset"`
 	Time            int64            `json:"time"`
+	PositionSide    PositionSideType `json:"positionSide"`
+	Buyer           bool             `json:"buyer"`
+	Maker           bool             `json:"maker"`
 }
