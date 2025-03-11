@@ -269,7 +269,9 @@ func (s *ListAccountTradeService) Do(ctx context.Context, opts ...RequestOption)
 		endpoint: "/dapi/v1/userTrades",
 		secType:  secTypeSigned,
 	}
-	r.setParam("symbol", s.symbol)
+	if s.symbol != nil {
+		r.setParam("symbol", *s.symbol)
+	}
 	if s.orderId != nil {
 		r.setParam("orderId", *s.orderId)
 	}
