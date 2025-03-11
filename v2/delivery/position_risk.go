@@ -64,4 +64,8 @@ type PositionRisk struct {
 	IsolatedMargin   string `json:"isolatedMargin"`
 	IsAutoAddMargin  string `json:"isAutoAddMargin"`
 	PositionSide     string `json:"positionSide"`
+	NotionalValue    string `json:"notionalValue"`
+	IsolatedWallet   string `json:"isolatedWallet"`
+	UpdateTime       int64  `json:"updateTime"`
+	BreakEvenPrice   string `json:"breakEvenPrice"`
 }
