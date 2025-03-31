@@ -822,7 +822,7 @@ func (s *ListLiquidationOrdersService) Do(ctx context.Context, opts ...RequestOp
 	r := &request{
 		method:   http.MethodGet,
 		endpoint: "/fapi/v1/allForceOrders",
-		secType:  secTypeNone,
+		secType:  secTypeSigned,
 	}
 	if s.symbol != nil {
 		r.setParam("symbol", *s.symbol)

@@ -590,7 +590,7 @@ func (s *ListLiquidationOrdersService) Do(ctx context.Context, opts ...RequestOp
 	r := &request{
 		method:   http.MethodGet,
 		endpoint: "/dapi/v1/forceOrders",
-		secType:  secTypeNone,
+		secType:  secTypeSigned,
 	}
 	if s.autoCloseType != nil {
 		r.setParam("autoCloseType", *s.autoCloseType)
