@@ -1218,7 +1218,7 @@ type SubAccountMarginFuturesStatus struct {
 	InsertTime       int64  `json:"insertTime"`
 	IsMarginEnabled  bool   `json:"isMarginEnabled"`
 	IsFutureEnabled  bool   `json:"isFutureEnabled"`
-	Mobile           int64  `json:"mobile"`
+	Mobile           string `json:"mobile"`
 }
 
 func (s *SubAccountMarginFuturesStatusService) Email(email string) *SubAccountMarginFuturesStatusService {
