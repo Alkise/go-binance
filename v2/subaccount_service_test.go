@@ -117,7 +117,7 @@ func (s *subAccountServiceTestSuite) TestSubManagedSubAccountDepositService() {
 
 	email := "testsub@gmail.com"
 	asset := "USDT"
-	amount := 1.0
+	amount := "1.0"
 	s.assertReq(func(r *request) {
 		e := newSignedRequest().setParams(params{
 			"toEmail": email,
@@ -146,7 +146,7 @@ func (s *subAccountServiceTestSuite) TestSubManagedSubAccountWithdrawalService()
 
 	email := "testsub@gmail.com"
 	asset := "USDT"
-	amount := 1.0
+	amount := "1.0"
 	s.assertReq(func(r *request) {
 		e := newSignedRequest().setParams(params{
 			"fromEmail": email,
@@ -1732,7 +1732,7 @@ func TestSubAccountApiIpRestrictionService(t *testing.T) {
 
 func (s *subAccountApiIpRestrictionServiceTestSuite) TestSubAccountApiIpRestriction() {
 	data := []byte(`{
-    "status": "2",
+    "ipRestrict": "true",
     "ipList": [
         "69.210.67.14",
         "8.34.21.10"
