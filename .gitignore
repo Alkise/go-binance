@@ -4,3 +4,4 @@ pkg/
 vendor
 coverage.txt
 .qodo
+vendor/

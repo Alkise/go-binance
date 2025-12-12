@@ -37,8 +37,32 @@ const (
 
 	// SPOT
 
+	// UserDataStreamSubscribeSignatureSpotWsApiMethod define method for user data stream subscription via websocket API with signature
+	UserDataStreamSubscribeSignatureSpotWsApiMethod WsApiMethodType = "userDataStream.subscribe.signature"
+
 	// OrderPlaceSpotWsApiMethod define method for creation order via websocket API
 	OrderPlaceSpotWsApiMethod WsApiMethodType = "order.place"
+
+	// OrderListPlaceOcoSpotWsApiMethod define method for creation OCO order list via websocket API
+	OrderListPlaceOcoSpotWsApiMethod WsApiMethodType = "orderList.place.oco"
+
+	// OrderListPlaceSpotWsApiMethod define method for creation order list (deprecated OCO) via websocket API
+	OrderListPlaceSpotWsApiMethod WsApiMethodType = "orderList.place"
+
+	// OrderListPlaceOtoSpotWsApiMethod define method for creation OTO order list via websocket API
+	OrderListPlaceOtoSpotWsApiMethod WsApiMethodType = "orderList.place.oto"
+
+	// OrderListPlaceOtocoSpotWsApiMethod define method for creation OTOCO order list via websocket API
+	OrderListPlaceOtocoSpotWsApiMethod WsApiMethodType = "orderList.place.otoco"
+
+	// OrderListCancelSpotWsApiMethod define method for canceling order list via websocket API
+	OrderListCancelSpotWsApiMethod WsApiMethodType = "orderList.cancel"
+
+	// SorOrderPlaceSpotWsApiMethod define method for SOR order placement via websocket API
+	SorOrderPlaceSpotWsApiMethod WsApiMethodType = "sor.order.place"
+
+	// SorOrderTestSpotWsApiMethod define method for SOR order testing via websocket API
+	SorOrderTestSpotWsApiMethod WsApiMethodType = "sor.order.test"
 
 	// FUTURES
 
@@ -47,6 +71,9 @@ const (
 
 	// CancelFuturesWsApiMethod define method for cancel order via websocket API
 	CancelFuturesWsApiMethod WsApiMethodType = "order.cancel"
+
+	// OrderStatusFuturesWsApiMethod define method for query order via websocket API
+	OrderStatusFuturesWsApiMethod WsApiMethodType = "order.status"
 )
 
 var (

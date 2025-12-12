@@ -23,9 +23,11 @@ var (
 
 var (
 	// WebsocketTimeout is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
-	WebsocketTimeout = time.Second * 60
+	WebsocketTimeout = time.Second * 600
+	// WebsocketPongTimeout is an interval for sending a PONG frame in response to PING frame from server
+	WebsocketPongTimeout = time.Second * 10
 	// WebsocketKeepalive enables sending ping/pong messages to check the connection stability
-	WebsocketKeepalive = false
+	WebsocketKeepalive = true
 	// UseTestnet switch all the WS streams from production to the testnet
 	UseTestnet = false
 	// WebsocketTimeoutReadWriteConnection is an interval for sending ping/pong messages if WebsocketKeepalive is enabled
@@ -330,6 +332,43 @@ func WsCombinedKlineServe(symbolIntervalPair map[string]string, handler WsKlineH
 	endpoint := getCombinedEndpoint()
 	for symbol, interval := range symbolIntervalPair {
 		endpoint += fmt.Sprintf("%s@kline_%s", strings.ToLower(symbol), interval) + "/"
+	}
+	endpoint = endpoint[:len(endpoint)-1]
+	cfg := newWsConfig(endpoint)
+	wsHandler := func(message []byte) {
+		j, err := newJSON(message)
+		if err != nil {
+			errHandler(err)
+			return
+		}
+
+		stream := j.Get("stream").MustString()
+		data := j.Get("data").MustMap()
+
+		symbol := strings.Split(stream, "@")[0]
+
+		jsonData, _ := json.Marshal(data)
+
+		event := new(WsKlineEvent)
+		err = json.Unmarshal(jsonData, event)
+		if err != nil {
+			errHandler(err)
+			return
+		}
+		event.Symbol = strings.ToUpper(symbol)
+
+		handler(event)
+	}
+	return wsServe(cfg, wsHandler, errHandler)
+}
+
+// WsCombinedKlineServeMultiInterval is similar to WsCombinedKlineServe, but it supports multiple intervals per symbol
+func WsCombinedKlineServeMultiInterval(symbolIntervals map[string][]string, handler WsKlineHandler, errHandler ErrHandler) (doneC, stopC chan struct{}, err error) {
+	endpoint := getCombinedEndpoint()
+	for symbol, intervals := range symbolIntervals {
+		for _, interval := range intervals {
+			endpoint += fmt.Sprintf("%s@kline_%s", strings.ToLower(symbol), interval) + "/"
+		}
 	}
 	endpoint = endpoint[:len(endpoint)-1]
 	cfg := newWsConfig(endpoint)
@@ -757,19 +796,19 @@ func WsCombinedDepthServe(symbolLevels map[string]string, handler WsDepthHandler
 		event.FirstUpdateID, _ = data["U"].(json.Number).Int64()
 		event.LastUpdateID, _ = data["u"].(json.Number).Int64()
 		event.PrevLastUpdateID, _ = data["pu"].(json.Number).Int64()
-		bidsLen := len(data["b"].([]interface{}))
+		bidsLen := len(data["b"].([]any))
 		event.Bids = make([]Bid, bidsLen)
 		for i := 0; i < bidsLen; i++ {
-			item := data["b"].([]interface{})[i].([]interface{})
+			item := data["b"].([]any)[i].([]any)
 			event.Bids[i] = Bid{
 				Price:    item[0].(string),
 				Quantity: item[1].(string),
 			}
 		}
-		asksLen := len(data["a"].([]interface{}))
+		asksLen := len(data["a"].([]any))
 		event.Asks = make([]Ask, asksLen)
 		for i := 0; i < asksLen; i++ {
-			item := data["a"].([]interface{})[i].([]interface{})
+			item := data["a"].([]any)[i].([]any)
 			event.Asks[i] = Ask{
 				Price:    item[0].(string),
 				Quantity: item[1].(string),
@@ -1023,6 +1062,80 @@ type WsUserDataEvent struct {
 
 	// TRADE_LITE
 	WsUserDataTradeLite
+
+	// CONDITIONAL_ORDER_TRIGGER_REJECT
+	WsUserDataConditionalOrderTriggerReject
+
+	// ALGO_UPDATE
+	WsUserDataAlgoUpdate
+}
+
+type WsUserDataAlgoUpdate struct {
+	AlgoUpdate WsAlgoUpdate
+}
+
+type WsAlgoUpdate struct {
+	ClientAlgoID     string           `json:"caid"` // Client Algo Id
+	AlgoID           int64            `json:"aid"`  // Algo Id
+	AlgoType         OrderAlgoType    `json:"at"`   // Algo Type
+	OrderType        AlgoOrderType    `json:"o"`    // Order Type
+	Symbol           string           `json:"s"`    // Symbol
+	Side             SideType         `json:"S"`    // Side
+	PositionSide     PositionSideType `json:"ps"`   // Position Side
+	TimeInForce      TimeInForceType  `json:"f"`    // Time in force
+	Quantity         string           `json:"q"`    // quantity
+	AlgoStatus       string           `json:"X"`    // Algo status
+	OrderID          string           `json:"ai"`   // order id
+	AvgPrice         string           `json:"ap"`   // avg fill price in matching engine, only display when order is triggered and placed in matching engine
+	ExecutedQuantity string           `json:"aq"`   // executed quantity in matching engine, only display when order is triggered and placed in matching engine
+	ActualOrderType  string           `json:"act"`  // actual order type in matching engine, only display when order is triggered and placed in matching engine
+	TriggerPrice     string           `json:"tp"`   // Trigger price
+	OrderPrice       string           `json:"p"`    // Order Price
+	STPMode          string           `json:"V"`    // STP mode
+	WorkingType      WorkingType      `json:"wt"`   // Working type
+	PriceMatchMode   string           `json:"pm"`   // Price match mode
+	CloseAll         bool             `json:"cp"`   // If Close-All
+	PriceProtection  bool             `json:"pP"`   // If price protection is turned on
+	ReduceOnly       bool             `json:"R"`    // Is this reduce only
+	TriggerTime      int64            `json:"tt"`   // Trigger time
+	GoodTillTime     int64            `json:"gtd"`  // good till time for GTD time in force
+	FailedReason     string           `json:"rm"`   // algo order failed reason
+}
+
+func (w *WsAlgoUpdate) fromSimpleJson(j *simplejson.Json) (err error) {
+	w.ClientAlgoID = j.Get("caid").MustString()
+	w.AlgoType = OrderAlgoType(j.Get("at").MustString())
+	w.OrderType = AlgoOrderType(j.Get("o").MustString())
+	w.Symbol = j.Get("s").MustString()
+	w.Side = SideType(j.Get("S").MustString())
+	w.PositionSide = PositionSideType(j.Get("ps").MustString())
+	w.TimeInForce = TimeInForceType(j.Get("f").MustString())
+	w.Quantity = j.Get("q").MustString()
+	w.AlgoStatus = j.Get("X").MustString()
+	w.OrderID = j.Get("ai").MustString()
+	w.AvgPrice = j.Get("ap").MustString()
+	w.ExecutedQuantity = j.Get("aq").MustString()
+	w.ActualOrderType = j.Get("act").MustString()
+	w.TriggerPrice = j.Get("tp").MustString()
+	w.OrderPrice = j.Get("p").MustString()
+	w.STPMode = j.Get("V").MustString()
+	w.WorkingType = WorkingType(j.Get("wt").MustString())
+	w.PriceMatchMode = j.Get("pm").MustString()
+	w.FailedReason = j.Get("rm").MustString()
+
+	w.CloseAll = j.Get("cp").MustBool()
+	w.PriceProtection = j.Get("pP").MustBool()
+	w.ReduceOnly = j.Get("R").MustBool()
+
+	w.AlgoID = j.Get("aid").MustInt64()
+	w.TriggerTime = j.Get("tt").MustInt64()
+	w.GoodTillTime = j.Get("gtd").MustInt64()
+
+	return nil
+}
+
+func (w *WsUserDataAlgoUpdate) fromSimpleJson(j *simplejson.Json) (err error) {
+	return w.AlgoUpdate.fromSimpleJson(j.Get("o"))
 }
 
 type WsUserDataAccountConfigUpdate struct {
@@ -1055,6 +1168,10 @@ type WsUserDataTradeLite struct {
 	OrderID         int64    `json:"i"`
 }
 
+type WsUserDataConditionalOrderTriggerReject struct {
+	ConditionalOrderTriggerReject WsConditionalOrderTriggerReject `json:"or"`
+}
+
 func (w *WsUserDataTradeLite) fromSimpleJson(j *simplejson.Json) (err error) {
 	w.Symbol = j.Get("s").MustString()
 	w.OriginalQty = j.Get("q").MustString()
@@ -1069,6 +1186,10 @@ func (w *WsUserDataTradeLite) fromSimpleJson(j *simplejson.Json) (err error) {
 	return nil
 }
 
+type simpleJsonUnmarshal interface {
+	fromSimpleJson(j *simplejson.Json) (err error)
+}
+
 func (e *WsUserDataEvent) UnmarshalJSON(data []byte) error {
 	j, err := newJSON(data)
 	if err != nil {
@@ -1080,28 +1201,35 @@ func (e *WsUserDataEvent) UnmarshalJSON(data []byte) error {
 		e.TransactionTime = v.MustInt64()
 	}
 
+	// use standard json unmarshal for event types
 	eventMaps := map[UserDataEventType]any{
-		UserDataEventTypeMarginCall:          &e.WsUserDataMarginCall,
-		UserDataEventTypeAccountUpdate:       &e.WsUserDataAccountUpdate,
-		UserDataEventTypeOrderTradeUpdate:    &e.WsUserDataOrderTradeUpdate,
-		UserDataEventTypeAccountConfigUpdate: &e.WsUserDataAccountConfigUpdate,
+		UserDataEventTypeMarginCall:                    &e.WsUserDataMarginCall,
+		UserDataEventTypeAccountUpdate:                 &e.WsUserDataAccountUpdate,
+		UserDataEventTypeOrderTradeUpdate:              &e.WsUserDataOrderTradeUpdate,
+		UserDataEventTypeAccountConfigUpdate:           &e.WsUserDataAccountConfigUpdate,
+		UserDataEventTypeConditionalOrderTriggerReject: &e.WsUserDataConditionalOrderTriggerReject,
 	}
 
-	switch e.Event {
-	case UserDataEventTypeTradeLite:
-		return e.WsUserDataTradeLite.fromSimpleJson(j)
-	case UserDataEventTypeListenKeyExpired:
-		// noting
-	default:
-		if v, ok := eventMaps[e.Event]; ok {
-			if err := json.Unmarshal(data, v); err != nil {
-				return err
-			}
-		} else {
-			return fmt.Errorf("unexpected event type: %v", e.Event)
-		}
+	// use simple json unmarshal for event types, The standard library is case insensitive.
+	simpleJsonTypes := map[UserDataEventType]simpleJsonUnmarshal{
+		UserDataEventTypeTradeLite:  &e.WsUserDataTradeLite,
+		UserDataEventTypeAlgoUpdate: &e.WsUserDataAlgoUpdate,
 	}
-	return nil
+
+	// ignore event types, No additional data
+	ignoreEventTypes := map[UserDataEventType]struct{}{
+		UserDataEventTypeListenKeyExpired: {},
+	}
+
+	if v, ok := eventMaps[e.Event]; ok {
+		return json.Unmarshal(data, v)
+	} else if v, ok := simpleJsonTypes[e.Event]; ok {
+		return v.fromSimpleJson(j)
+	} else if _, ok := ignoreEventTypes[e.Event]; ok {
+		return nil
+	}
+
+	return fmt.Errorf("unexpected event type: %v", e.Event)
 }
 
 // WsAccountUpdate define account update
@@ -1175,6 +1303,12 @@ type WsOrderTradeUpdate struct {
 type WsAccountConfigUpdate struct {
 	Symbol   string `json:"s"`
 	Leverage int64  `json:"l"`
+}
+
+type WsConditionalOrderTriggerReject struct {
+	Symbol       string `json:"s"`
+	OrderId      int64  `json:"i"`
+	RejectReason string `json:"r"`
 }
 
 // WsUserDataHandler handle WsUserDataEvent
